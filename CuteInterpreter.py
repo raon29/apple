@@ -320,10 +320,23 @@ class CuteInterpreter(object):
     TRUE_NODE = Node(TokenType.TRUE)
     FALSE_NODE = Node(TokenType.FALSE)
 
+    dic = {}
+
+	
     def run_arith(self, arith_node):
         #연산
         rhs1 = arith_node.next
         rhs2 = rhs1.next if rhs1.next is not None else None
+		
+        #값이 변수 일때
+        if rhs1.type is TokenType.ID:
+            if self.dic[rhs1.value] != None:
+                rhs1 = self.dic[rhs1.value]
+            if rhs2.type is TokenType.ID:
+                if self.dic[rhs2.value] != None:
+                    rhs2 = self.dic[rhs2.value]
+		
+		
         if rhs1.type is TokenType.LIST:
             rhs1 = self.run_arith(rhs1.value)
         if rhs2.type is TokenType.LIST:
@@ -382,9 +395,16 @@ class CuteInterpreter(object):
             node = pop_node_from_quote_list(node)
             if node is None:return True
             return False
-
+		        
         if func_node.type is TokenType.CAR:
             rhs1 = self.run_expr(rhs1)
+            #값이 변수 일때
+            if rhs1.type is TokenType.ID:
+                if self.dic[rhs1.value] != None:
+                    rhs1 = self.dic[rhs1.value]
+                if rhs1.type is TokenType.QUOTE:
+                    rhs1 = Node(TokenType.LIST, rhs1)
+					
             if not is_quote_list(rhs1):
                 print ("car error!")
             result = pop_node_from_quote_list(rhs1)
@@ -395,6 +415,12 @@ class CuteInterpreter(object):
         elif func_node.type is TokenType.CDR:
             #작성
             rhs1 = self.run_expr(rhs1)
+            #값이 변수 일때
+            if rhs1.type is TokenType.ID:
+                if self.dic[rhs1.value] != None:
+                    rhs1 = self.dic[rhs1.value]
+                if rhs1.type is TokenType.QUOTE:
+                    rhs1 = Node(TokenType.LIST, rhs1)
             #ㅇㅔ러처리
             if not is_quote_list(rhs1):
                 print ("car error!")
@@ -408,6 +434,17 @@ class CuteInterpreter(object):
             expr_rhs1 = self.run_expr(rhs1)
             expr_rhs2 = self.run_expr(rhs2)
             #작성
+			#값이 변수 일 때
+            if expr_rhs1.type is TokenType.ID:
+                if self.dic[expr_rhs1.value] != None:
+                    expr_rhs1 = self.dic[expr_rhs1.value]
+                    if expr_rhs1.type is TokenType.QUOTE:
+                        expr_rhs1 = Node(TokenType.LIST, expr_rhs1)
+            if expr_rhs2.type is TokenType.ID:
+                if self.dic[expr_rhs2.value] != None:
+                    expr_rhs2 = self.dic[expr_rhs2.value]
+                    if expr_rhs2.type is TokenType.QUOTE:
+                        expr_rhs2 = Node(TokenType.LIST, expr_rhs2)
             #rhs2는 무조건 list라고 가정            
             if expr_rhs1.next is not None :
                 #rhs2 list가 비었을 때
@@ -424,6 +461,13 @@ class CuteInterpreter(object):
             return create_quote_node(expr_rhs1,True)
             
         elif func_node.type is TokenType.ATOM_Q:
+			#값이 변수 일 때
+            if rhs1.type is TokenType.ID:
+                if self.dic[rhs1.value] != None:
+                    rhs1 = self.dic[rhs1.value]
+                    if rhs1.type is TokenType.QUOTE:
+                        rhs1 = Node(TokenType.LIST, rhs1)
+					
             if list_is_null(rhs1): return self.TRUE_NODE
             if rhs1.type is not TokenType.LIST: return self.TRUE_NODE
             if rhs1.type is TokenType.LIST:
@@ -434,14 +478,32 @@ class CuteInterpreter(object):
 
         elif func_node.type is TokenType.EQ_Q:
             #작성
+			#값이 변수 일 때
+            if rhs1.type is TokenType.ID:
+                if self.dic[rhs1.value] != None:
+                    rhs1 = self.dic[rhs1.value]
+                    if rhs1.type is TokenType.QUOTE:
+                        rhs1 = Node(TokenType.LIST, rhs1)
+            if rhs2.type is TokenType.ID:
+                if self.dic[rhs2.value] != None:
+                    rhs2 = self.dic[rhs2.value]
+                    if rhs2.type is TokenType.QUOTE:
+                        rhs2 = Node(TokenType.LIST, rhs2)
+			#값 비교
             if rhs1.value is rhs2.value :
                 return self.TRUE_NODE
             else :
                 return self.FALSE_NODE
 
         elif func_node.type is TokenType.NULL_Q:
+            if rhs1.type is TokenType.ID:
+                if self.dic[rhs1.value] != None:
+                    rhs1 = self.dic[rhs1.value]
+                    if rhs1.type is TokenType.QUOTE:
+                        rhs1 = Node(TokenType.LIST, rhs1)
             if list_is_null(rhs1): return self.TRUE_NODE
             return self.FALSE_NODE
+
         elif func_node.type is TokenType.NOT:
             #not
             if rhs1.type is 9:
@@ -450,7 +512,13 @@ class CuteInterpreter(object):
                 return self.FALSE_NODE
 
         elif func_node.type is TokenType.COND:
-            #condition
+			#값이 변수 일 때
+            if rhs1.type is TokenType.ID:
+                if self.dic[rhs1.value] != None:
+                    rhs1 = self.dic[rhs1.value]
+                    if rhs1.type is TokenType.QUOTE:
+                        rhs1 = Node(TokenType.LIST, rhs1)
+			#condition
             while True:
                 if self.run_list(rhs1.value).type is TokenType.TRUE or rhs1.value.type is TokenType.TRUE:
                     return rhs1.value.next
@@ -458,17 +526,37 @@ class CuteInterpreter(object):
                     break
                 else:
                      rhs1 = rhs1.next
+        
+		#item1 (define)
+        elif func_node.type is TokenType.DEFINE:
+                self.insertTable(rhs1.value, rhs1.next)
+                return self.dic[rhs1.value]
+		
         else:
             return None
 
+	#item2
+    def insertTable(self, id, value_2):
+        if value_2.type == TokenType.LIST:
+            if value_2.value.type == TokenType.QUOTE:
+                self.dic[id] = value_2
+            else:
+                self.value_2 = self.run_expr(value_2)
+                self.dic[id] = self.value_2
+        else:
+            self.dic[id] = value_2
+	
     def run_expr(self, root_node):
         """
         :type root_node: Node
         """
         if root_node is None:
             return None
-
+		
         if root_node.type is TokenType.ID:
+            #define id
+            if self.dic[root_node.value] != None:
+                return self.dic[root_node.value]
             return root_node
         elif root_node.type is TokenType.INT:
             return root_node
@@ -491,7 +579,7 @@ class CuteInterpreter(object):
             return l_node
         if op_code.type in \
                 [TokenType.CAR, TokenType.CDR, TokenType.CONS, TokenType.ATOM_Q,\
-                 TokenType.EQ_Q, TokenType.NULL_Q, TokenType.NOT, TokenType.COND]:
+                 TokenType.EQ_Q, TokenType.NULL_Q, TokenType.NOT, TokenType.COND, TokenType.DEFINE]:
             return self.run_func(op_code)
         elif op_code.type in [TokenType.PLUS, TokenType.MINUS, TokenType.TIMES,\
                               TokenType.DIV, TokenType.EQ, TokenType.LT, TokenType.GT]:
