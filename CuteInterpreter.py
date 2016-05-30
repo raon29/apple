@@ -585,7 +585,7 @@ def Test_method(input):
 
 def Test_All():
     while(1):
-        cmd = raw_input(">> ")
+        cmd = raw_input("> ")
         Test_method(cmd)
 		
 		
